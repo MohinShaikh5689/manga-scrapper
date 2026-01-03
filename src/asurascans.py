@@ -45,7 +45,7 @@ class Asurascans:
             soup = BeautifulSoup(response.content, "html.parser")
 
             content = {}
-            content["images"] = soup.select_one(
+            content["image"] = soup.select_one(
                 "div.seriestucon > div.seriestucontent > div.seriestucontl > div.thumb > img"
             ).get("data-src")
             content["description"] = soup.select_one(
@@ -55,6 +55,11 @@ class Asurascans:
             infoSelector = soup.select_one(
                 "div.seriestucon > div.seriestucontent > div.seriestucontentr > div.seriestucont > div > table > tbody"
             )
+            content["title"] = soup.select_one(
+                "div.seriestucon > div.seriestuheader > h1"
+            ).get_text()
+
+            content["id"] = id
             content["status"] = infoSelector.select_one(
                 "tr:nth-child(1) > td:nth-child(2)"
             ).get_text()
