@@ -4,17 +4,25 @@ from bs4 import BeautifulSoup
 
 class Mangapill:
     def __init__(self) -> None:
-        self.proxy_url = "https://sup-proxy.zephex0-f6c.workers.dev/api-text?url="
         self.parent_url = "https://mangapill.com"
         self.results = {"status": "", "results": []}
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
 
     def search(self, query: str):
         try:
             newQuery = query.replace(" ", "+")
-            url = f"{self.proxy_url}{self.parent_url}/search?q={newQuery}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/search?q={newQuery}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
+
+            # Debug: Check if we got valid HTML
+            if response.status_code != 200:
+                self.results["status"] = response.status_code
+                self.results["results"] = f"HTTP {response.status_code} error"
+                return self.results
 
             cards = soup.select(
                 "body > div.container.py-3 > div.my-3.grid.justify-end.gap-3.grid-cols-2 > div"
@@ -57,8 +65,8 @@ class Mangapill:
 
     def info(self, id: str):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/{id}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/{id}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -104,8 +112,8 @@ class Mangapill:
 
     def pages(self, id: str):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/{id}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/{id}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -121,8 +129,8 @@ class Mangapill:
 
     def new(self):  # Same as search
         try:
-            url = f"{self.proxy_url}{self.parent_url}/mangas/new"
-            response = requests.get(url)
+            url = f"{self.parent_url}/mangas/new"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -167,8 +175,8 @@ class Mangapill:
 
     def recent(self):  # Same as search
         try:
-            url = f"{self.proxy_url}{self.parent_url}/chapters"
-            response = requests.get(url)
+            url = f"{self.parent_url}/chapters"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 

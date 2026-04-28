@@ -4,14 +4,16 @@ from bs4 import BeautifulSoup
 
 class Asurascans:
     def __init__(self) -> None:
-        self.proxy_url = "https://sup-proxy.zephex0-f6c.workers.dev/api-text?url="
         self.parent_url = "https://asurascans.io"
         self.results = {"status": "", "results": []}
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
 
     def search(self, query: str):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/?s={query}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/?s={query}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -39,8 +41,8 @@ class Asurascans:
 
     def info(self, id: str):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/manga/{id}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/manga/{id}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -112,8 +114,8 @@ class Asurascans:
 
     def pages(self, id: str):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/{id}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/{id}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -127,8 +129,8 @@ class Asurascans:
 
     def popular(self):
         try:
-            url = f"{self.proxy_url}{self.parent_url}"
-            response = requests.get(url)
+            url = f"{self.parent_url}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -156,8 +158,8 @@ class Asurascans:
 
     def latest(self, page: str = "1"):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/manga/?page={page}&order=update"
-            response = requests.get(url)
+            url = f"{self.parent_url}/manga/?page={page}&order=update"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -185,8 +187,8 @@ class Asurascans:
 
     def genres(self, type: str):
         try:
-            url = f"{self.proxy_url}{self.parent_url}/genres/{type}"
-            response = requests.get(url)
+            url = f"{self.parent_url}/genres/{type}"
+            response = requests.get(url, headers=self.headers, timeout=10)
             self.results["status"] = response.status_code
             soup = BeautifulSoup(response.content, "html.parser")
 

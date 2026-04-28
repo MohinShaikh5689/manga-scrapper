@@ -1,5 +1,6 @@
 import requests
 from fastapi import FastAPI, Response
+from urllib.parse import quote
 
 from src.asurascans import Asurascans
 from src.mangapill import Mangapill
@@ -13,6 +14,24 @@ def homepage():
         "message": "Welcome to the manga scrapers API",
         "available_providers": ["mangapill", "asurascans"],
     }
+
+
+@app.get("/debug/proxy")
+def debug_proxy(url: str):
+    """Debug endpoint to check what proxy returns"""
+    proxy_url = "https://sup-proxy.zephex0-f6c.workers.dev/api-text?url="
+    encoded_url = quote(url, safe=':/')
+    full_url = f"{proxy_url}{encoded_url}"
+    try:
+        response = requests.get(full_url, timeout=10)
+        return {
+            "status": response.status_code,
+            "content_length": len(response.content),
+            "first_500_chars": response.text[:500],
+            "proxy_url": full_url
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.head("/")
@@ -35,6 +54,11 @@ def mangapill(category: str, path: str):
         return Mangapill().recent()
     elif category == "images":
         if path:
+            # FastAPI's path param strips a slash from "://", restore it
+            if path.startswith("https:/") and not path.startswith("https://"):
+                path = path.replace("https:/", "https://", 1)
+            elif path.startswith("http:/") and not path.startswith("http://"):
+                path = path.replace("http:/", "http://", 1)
             headers = {"Referer": "https://mangapill.com/"}
             content = requests.get(url=path, headers=headers).content
             return Response(content=content, media_type="image/jpg")
