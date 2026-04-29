@@ -1,6 +1,7 @@
 import requests
 from fastapi import FastAPI, Response
 from urllib.parse import quote
+from bs4 import BeautifulSoup
 
 from src.asurascans import Asurascans
 from src.mangapill import Mangapill
@@ -16,22 +17,39 @@ def homepage():
     }
 
 
-@app.get("/debug/proxy")
-def debug_proxy(url: str):
-    """Debug endpoint to check what proxy returns"""
-    proxy_url = "https://sup-proxy.zephex0-f6c.workers.dev/api-text?url="
-    encoded_url = quote(url, safe=':/')
-    full_url = f"{proxy_url}{encoded_url}"
+@app.get("/debug/asurascans")
+def debug_asurascans(url: str = "https://asurascans.io/genres/action"):
+    """Debug endpoint to check asurascans HTML"""
     try:
-        response = requests.get(full_url, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.content, "html.parser")
+        
+        # Look for any divs with class 'bsx'
+        all_bsx = soup.find_all("div", class_="bsx")
+        
+        # Also try to find all divs with any class that contains 'post' or 'item'
+        all_divs = soup.find_all("div")
+        
+        # Get first 5 divs to see structure
+        sample_divs = [str(d)[:200] for d in all_divs[:10]]
+        
+        # Try to find title tags
+        titles = soup.find_all("h2") + soup.find_all("h3") + soup.find_all("a")
+        
         return {
             "status": response.status_code,
-            "content_length": len(response.content),
-            "first_500_chars": response.text[:500],
-            "proxy_url": full_url
+            "total_divs": len(all_divs),
+            "bsx_divs_found": len(all_bsx),
+            "titles_found": len(titles),
+            "first_titles": [str(t)[:100] for t in titles[:3]],
+            "sample_divs": sample_divs,
+            "full_html_sample": response.text[1000:2000]
         }
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "type": type(e).__name__}
 
 
 @app.head("/")
