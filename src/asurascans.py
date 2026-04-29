@@ -132,16 +132,21 @@ class Asurascans:
             type_spans = soup.find_all("span", class_=lambda x: x and "text-[#913FE2]" in x and "uppercase" in x)
             info["type"] = type_spans[0].get_text(strip=True).lower() if type_spans else "unknown"
             
-            # Author and Artist
-            author_link = soup.find("a", href=lambda x: x and "?author=" in x)
-            info["author"] = author_link.get_text(strip=True) if author_link else ""
+            # Author and Artist - as arrays to match frontend expectations
+            author_links = soup.find_all("a", href=lambda x: x and "?author=" in x)
+            info["author"] = [a.get_text(strip=True) for a in author_links] if author_links else []
             
-            artist_link = soup.find("a", href=lambda x: x and "?artist=" in x)
-            info["artist"] = artist_link.get_text(strip=True) if artist_link else ""
+            artist_links = soup.find_all("a", href=lambda x: x and "?artist=" in x)
+            info["artists"] = [a.get_text(strip=True) for a in artist_links] if artist_links else []
             
-            # Genres
+            # Genres - as comma-separated string for frontend
             genre_links = soup.find_all("a", href=lambda x: x and "?genres=" in x)
-            info["genres"] = [g.get_text(strip=True) for g in genre_links]
+            genres_list = [g.get_text(strip=True) for g in genre_links]
+            info["genres"] = ", ".join(genres_list) if genres_list else ""
+            
+            # Year and Serialization - not easily available on asurascans, use empty defaults
+            info["year"] = ""
+            info["serialization"] = []
             
             # Cover image
             cover_img = soup.find("img", src=lambda x: x and "cdn.asurascans.com/asura-images/covers/" in x)
