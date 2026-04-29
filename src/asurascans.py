@@ -1,7 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import asyncio
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 
 class Asurascans:
@@ -13,55 +11,22 @@ class Asurascans:
         }
     
     def _get_rendered(self, url):
-        """Get page content using Playwright to render JavaScript"""
-        async def render():
-            try:
-                async with async_playwright() as p:
-                    browser = await p.chromium.launch(
-                        headless=True,
-                        args=[
-                            '--no-sandbox',
-                            '--disable-setuid-sandbox',
-                            '--disable-dev-shm-usage',
-                            '--disable-gpu'
-                        ]
-                    )
-                    
-                    page = await browser.new_page(
-                        user_agent=self.headers['User-Agent']
-                    )
-                    
-                    # Navigate to URL and wait for network to be idle
-                    await page.goto(url, wait_until='networkidle', timeout=30000)
-                    
-                    # Wait for manga cards to load (they have /comics/ links)
-                    try:
-                        await page.wait_for_selector("a[href*='/comics/']", timeout=15000)
-                    except PlaywrightTimeoutError:
-                        # If selector not found, just wait a bit more
-                        await page.wait_for_timeout(5000)
-                    
-                    content = await page.content()
-                    await browser.close()
-                    return content
-                    
-            except Exception as e:
-                print(f"[_get_rendered] Error: {e}")
-                return None
-        
-        # Run async function in sync context
+        """Get page content with proper headers"""
         try:
-            return asyncio.run(render())
-        except RuntimeError:
-            # Handle case where event loop already exists
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is running, create a task
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    return loop.run_in_executor(pool, asyncio.run, render()).result()
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                return response.text
             else:
-                return loop.run_until_complete(render())
+                print(f"[_get_rendered] Error: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"[_get_rendered] Error: {e}")
+            return None
 
     def search(self, query: str):
         try:
@@ -188,6 +153,7 @@ class Asurascans:
             for link in chapter_links:
                 try:
                     href = link.get("href", "")
+                    # Extract chapter number from the end of href
                     chapter_num = href.rsplit("/", 1)[-1]
                     
                     # Get chapter title from font-medium span
@@ -202,7 +168,7 @@ class Asurascans:
                         "number": chapter_num,
                         "title": chapter_title,
                         "date": chapter_date,
-                        "id": chapter_num
+                        "id": href.lstrip("/")  # Store full path without leading slash
                     })
                 except:
                     pass
@@ -218,7 +184,13 @@ class Asurascans:
 
     def pages(self, id: str):
         try:
-            url = f"{self.parent_url}/comics/{id}"
+            # id should be in format "comics/manga-id-suffix/chapter/number"
+            # Ensure it starts with "comics/" for proper URL construction
+            if not id.startswith("comics/"):
+                # Fallback: try to construct from the id
+                id = f"comics/{id}"
+            
+            url = f"{self.parent_url}/{id}"
             html_content = self._get_rendered(url)
             
             if not html_content:
