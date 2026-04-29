@@ -1,11 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-import time
+import asyncio
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 
 class Asurascans:
@@ -17,39 +13,55 @@ class Asurascans:
         }
     
     def _get_rendered(self, url):
-        """Get page content using Selenium to render JavaScript"""
-        driver = None
-        try:
-            options = Options()
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument(f"user-agent={self.headers['User-Agent']}")
-            
-            driver = webdriver.Chrome(options=options)
-            driver.get(url)
-            
-            # Wait for actual manga cards to load (they have /comics/ links)
+        """Get page content using Playwright to render JavaScript"""
+        async def render():
             try:
-                WebDriverWait(driver, 15).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "a[href*='/comics/']"))
-                )
-            except:
-                # Final fallback: just wait a bit more
-                time.sleep(10)
-            
-            content = driver.page_source
-            return content
-        except Exception as e:
-            print(f"[_get_rendered] Error: {e}")
-            return None
-        finally:
-            if driver:
-                try:
-                    driver.quit()
-                except:
-                    pass
+                async with async_playwright() as p:
+                    browser = await p.chromium.launch(
+                        headless=True,
+                        args=[
+                            '--no-sandbox',
+                            '--disable-setuid-sandbox',
+                            '--disable-dev-shm-usage',
+                            '--disable-gpu'
+                        ]
+                    )
+                    
+                    page = await browser.new_page(
+                        user_agent=self.headers['User-Agent']
+                    )
+                    
+                    # Navigate to URL and wait for network to be idle
+                    await page.goto(url, wait_until='networkidle', timeout=30000)
+                    
+                    # Wait for manga cards to load (they have /comics/ links)
+                    try:
+                        await page.wait_for_selector("a[href*='/comics/']", timeout=15000)
+                    except PlaywrightTimeoutError:
+                        # If selector not found, just wait a bit more
+                        await page.wait_for_timeout(5000)
+                    
+                    content = await page.content()
+                    await browser.close()
+                    return content
+                    
+            except Exception as e:
+                print(f"[_get_rendered] Error: {e}")
+                return None
+        
+        # Run async function in sync context
+        try:
+            return asyncio.run(render())
+        except RuntimeError:
+            # Handle case where event loop already exists
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, create a task
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    return loop.run_in_executor(pool, asyncio.run, render()).result()
+            else:
+                return loop.run_until_complete(render())
 
     def search(self, query: str):
         try:
